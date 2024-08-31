@@ -1,4 +1,4 @@
-export const createGif = (blob: Blob) => {
+export const createGif = async (blob: Blob) => {
   document.querySelector("video")?.remove()
 
   const video = document.createElement("video")
@@ -8,7 +8,7 @@ export const createGif = (blob: Blob) => {
   document.body.appendChild(video)
 
   video.src = URL.createObjectURL(blob)
-  video.play()
+  await video.play()
 
   video.onloadeddata = () => {
     const canvas = document.createElement("canvas")

@@ -23,7 +23,7 @@ export const Home = () => {
     recorder.ondataavailable = (e) => chunks.push(e.data)
     recorder.onstop = async () => {
       const completeBlob = new Blob(chunks, { type: chunks[0].type })
-      createGif(completeBlob)
+      await createGif(completeBlob)
     }
 
     recorder.start()
@@ -45,7 +45,13 @@ export const Home = () => {
         {recording ? (
           <button onClick={handleStop}>Stop recording</button>
         ) : (
-          <button onClick={handleShare}>Start recording</button>
+          <button
+            onClick={() => {
+              void handleShare()
+            }}
+          >
+            Start recording
+          </button>
         )}
         <p>Recording a GIF of your screen</p>
       </div>
