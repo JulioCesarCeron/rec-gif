@@ -30,7 +30,12 @@ jobs:
         run: yarn build
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: "${{ secrets.GITHUB_TOKEN }}"
-          publish_dir: ./dist
+        run: |
+          git config --global user.name "Julio Cesar Ceron"
+          git config --global user.email "julio.ceorn@gmail.com"
+          git fetch origin gh-pages
+          git checkout gh-pages
+          cp -r ../dist/* .
+          git add .
+          git commit -m "Deploy to GitHub Pages"
+          git push origin gh-pages
