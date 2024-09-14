@@ -34,7 +34,7 @@ jobs:
           git fetch origin gh-pages
           git checkout gh-pages
 
-          cp -r ../dist/* .
+          cp -r dist/* .
 
           git add .
           git commit -m "Deploy website via GitHub Actions"
