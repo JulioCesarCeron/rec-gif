@@ -31,11 +31,11 @@ jobs:
 
       - name: Deploy to GitHub Pages
         run: |
-          git config --global user.name "Julio Cesar Ceron"
-          git config --global user.email "julio.ceorn@gmail.com"
+          git config --global user.name 'Julio Cesar Ceron'
+          git config --global user.email 'julio.ceorn@gmail.com'
           git fetch origin gh-pages
           git checkout gh-pages
           cp -r ../dist/* .
           git add .
-          git commit -m "Deploy to GitHub Pages"
+          git commit -m "Deploy website via GitHub Actions"
           git push origin gh-pages
