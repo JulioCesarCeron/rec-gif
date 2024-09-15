@@ -36,6 +36,7 @@ jobs:
           git fetch origin gh-pages
           git checkout gh-pages
 
+          rm index.html
           cp -r dist/* .
 
           git add .
