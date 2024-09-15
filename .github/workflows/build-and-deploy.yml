@@ -32,20 +32,22 @@ jobs:
         run: yarn install
 
       - name: Build project
-        run: yarn build
+        run: |
+          mkdir -p build
+          yarn build
+          cp -r dist/* build
 
       - name: Deploy to GitHub Pages
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        run: >
+        run: |
           git config --global user.name 'Julio Cesar Ceron'
           git config --global user.email 'julio.ceorn@gmail.com'
 
           git fetch origin gh-pages
           git checkout gh-pages
 
-          git reset --soft origin/main
-          cp -r dist/* .
+          cp -r build/* .
 
           git add .
           git commit -m "Deploy website via GitHub Actions"
