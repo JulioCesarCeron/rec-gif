@@ -37,7 +37,7 @@ jobs:
 
       - name: Deploy to GitHub Pages
         env:
-          GITHUB_TOKEN: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name 'Julio Cesar Ceron'
           git config --global user.email 'julio.ceorn@gmail.com'
@@ -51,4 +51,4 @@ jobs:
 
           git add .
           git commit -m "Deploy website via GitHub Actions" || echo "Erro ao fazer commit"
-          git push https://x-access-token:${{ secrets.ACTIONS_DEPLOY_KEY }}@github.com/JulioCesarCeron/rec-gif.git gh-pages || echo "Erro ao fazer push"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/JulioCesarCeron/rec-gif.git gh-pages || echo "Erro ao fazer push"
