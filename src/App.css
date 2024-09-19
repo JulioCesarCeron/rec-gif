@@ -27,3 +27,11 @@
   align-items: center;
   flex-direction: row;
 }
+
+.media-raw-video {
+  width: 900px;
+}
+
+.wrapper-medias {
+  display: flex;
+}

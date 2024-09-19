@@ -18,10 +18,5 @@ export const createGif = async (blob: Blob, ffmpeg: FFmpeg) => {
   const data = new Uint8Array(fileData as ArrayBuffer)
   const imageGifBlob = new Blob([data], { type: "image/gif" })
 
-  document.querySelector("img")?.remove()
-
-  const image = document.createElement("img")
-
-  document.body.appendChild(image)
-  image.src = URL.createObjectURL(imageGifBlob)
+  return URL.createObjectURL(imageGifBlob)
 }

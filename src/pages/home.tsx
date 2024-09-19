@@ -10,6 +10,7 @@ export const Home = () => {
   const [ready, setReady] = useState(false)
   const ffmpegRef = useRef(new FFmpeg())
   const [videoBlobUrl, setVideoBlobUrl] = useState<string>()
+  const [gifBlobUrl, setGifBlobUrl] = useState<string>()
 
   const onRecordGif = async () => {
     setRecording(true)
@@ -37,7 +38,8 @@ export const Home = () => {
     recorder.onstop = async () => {
       const completeBlob = new Blob(chunks, { type: chunks[0].type })
       setVideoBlobUrl(URL.createObjectURL(completeBlob))
-      await createGif(completeBlob, ffmpegRef.current)
+      const blobUrlGif = await createGif(completeBlob, ffmpegRef.current)
+      setGifBlobUrl(blobUrlGif)
     }
 
     recorder.onerror = (e) => {
@@ -97,8 +99,26 @@ export const Home = () => {
         <p className="read-the-docs">This is a client-side web app</p>
       </div>
       {hasVideo && (
-        <div className="rec-media">
-          <video src={videoBlobUrl} loop autoPlay />
+        <div className="wrapper-medias">
+          <div className="rec-media">
+            <h1>Video.mp4</h1>
+            <video className="media-raw-video" src={videoBlobUrl} loop autoPlay>
+              <track
+                kind="captions"
+                srcLang="en"
+                label="English captions"
+                default
+              />
+            </video>
+          </div>
+          <div className="rec-media">
+            <h1>Gif</h1>
+            {gifBlobUrl ? (
+              <img src={gifBlobUrl} alt="recorded-gif" />
+            ) : (
+              <p>Processing...</p>
+            )}
+          </div>
         </div>
       )}
     </div>
