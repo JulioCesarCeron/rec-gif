@@ -1,0 +1,16 @@
+.version {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.version-text {
+  font-size: 10px;
+  color: gray;
+}
+
+.version-text p {
+  padding: 0;
+  margin: 0;
+}

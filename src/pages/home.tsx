@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { createGif } from "../handlers/create-gif"
 import { FFmpeg } from "@ffmpeg/ffmpeg"
 import { getFFmpegLoadConfig } from "../config/ffmpegLoadConfig"
+import Version from "../components/version"
 
 let recorder: MediaRecorder
 
@@ -73,54 +74,64 @@ export const Home = () => {
   const hasVideo = useMemo(() => !!videoBlobUrl, [videoBlobUrl])
 
   return (
-    <div className="content">
-      <div className="rec-controls">
-        <h1>
-          REC <span className="rec-pin">๏</span> GIF
-        </h1>
+    <>
+      <div className="content">
+        <div className="rec-controls">
+          <h1>
+            REC <span className="rec-pin">๏</span> GIF
+          </h1>
 
-        <div className="card">
-          {recording ? (
-            <button className="stop-rec" onClick={handleStop}>
-              Stop recording
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                void onRecordGif()
-              }}
-              disabled={!ready}
-            >
-              {ready ? "Start recording" : "Loading..."}
-            </button>
-          )}
-          <p>Recording a GIF of your screen</p>
-        </div>
-        <p className="read-the-docs">This is a client-side web app</p>
-      </div>
-      {hasVideo && (
-        <div className="wrapper-medias">
-          <div className="rec-media">
-            <h1>Video.mp4</h1>
-            <video className="media-raw-video" src={videoBlobUrl} loop autoPlay>
-              <track
-                kind="captions"
-                srcLang="en"
-                label="English captions"
-                default
-              />
-            </video>
-          </div>
-          <div className="rec-media">
-            <h1>Gif</h1>
-            {gifBlobUrl ? (
-              <img src={gifBlobUrl} alt="recorded-gif" />
+          <div className="card">
+            {recording ? (
+              <button className="stop-rec" onClick={handleStop}>
+                Stop recording
+              </button>
             ) : (
-              <p>Processing...</p>
+              <button
+                onClick={() => {
+                  void onRecordGif()
+                }}
+                disabled={!ready}
+              >
+                {ready ? "Start recording" : "Loading..."}
+              </button>
             )}
+            <p>Recording a GIF of your screen</p>
           </div>
+          <p className="read-the-docs">This is a client-side web app</p>
         </div>
-      )}
-    </div>
+        {hasVideo && (
+          <div className="wrapper-medias">
+            <div className="rec-media">
+              <h1>Video.mp4</h1>
+              <video
+                className="media-raw-video"
+                src={videoBlobUrl}
+                loop
+                autoPlay
+              >
+                <track
+                  kind="captions"
+                  srcLang="en"
+                  label="English captions"
+                  default
+                />
+              </video>
+            </div>
+            <div className="rec-media">
+              <h1>Gif</h1>
+              {gifBlobUrl ? (
+                <img src={gifBlobUrl} alt="recorded-gif" />
+              ) : (
+                <p>Processing...</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      <footer className="footer">
+        <Version />
+      </footer>
+    </>
   )
 }
