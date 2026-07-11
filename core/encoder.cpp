@@ -1,10 +1,10 @@
 #include "config.h"
 #include <emscripten.h>
-#include <stdint.h>
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <stdint.h>
 #include <vector>
 
 extern "C" {
@@ -28,6 +28,22 @@ static Gif_Colormap *create_colormap_from_palette(const liq_palette *palette) {
   return colormap;
 }
 
+static void destroyQuantizationResources(
+    liq_attr *attr, liq_image *globalImage, liq_result *quantResult
+) {
+  if (quantResult) {
+    liq_result_destroy(quantResult);
+  }
+
+  if (globalImage) {
+    liq_image_destroy(globalImage);
+  }
+
+  if (attr) {
+    liq_attr_destroy(attr);
+  }
+}
+
 extern "C" {
   EMSCRIPTEN_KEEPALIVE
   uint8_t *process_frames(
@@ -38,23 +54,62 @@ extern "C" {
       int delay,
       int *outSize
   ) {
-    const int frameSize = width * height * 4;
-
     outputBuffer.clear();
-    *outSize = 0;
+
+    if (outSize) {
+      *outSize = 0;
+    }
+
+    if (!allFrames || !outSize || frameCount <= 0 || width <= 0 ||
+        height <= 0) {
+      return nullptr;
+    }
+
+    const size_t frameSize =
+        static_cast<size_t>(width) * static_cast<size_t>(height) * 4;
 
     liq_attr *attr = liq_attr_create();
+
+    if (!attr) {
+      return nullptr;
+    }
 
     liq_set_max_colors(attr, 256);
     liq_set_quality(attr, 90, 100);
 
     liq_image *globalImage =
         liq_image_create_rgba(attr, allFrames, width, height * frameCount, 0);
+
+    if (!globalImage) {
+      destroyQuantizationResources(attr, nullptr, nullptr);
+
+      return nullptr;
+    }
+
     liq_result *quantResult = liq_quantize_image(attr, globalImage);
+
+    if (!quantResult) {
+      destroyQuantizationResources(attr, globalImage, nullptr);
+
+      return nullptr;
+    }
+
     const liq_palette *palette = liq_get_palette(quantResult);
+
+    if (!palette || palette->count <= 0) {
+      destroyQuantizationResources(attr, globalImage, quantResult);
+
+      return nullptr;
+    }
 
     Gif_Colormap *colormap = create_colormap_from_palette(palette);
     Gif_Stream *stream = Gif_NewStream();
+
+    if (!stream) {
+      destroyQuantizationResources(attr, globalImage, quantResult);
+
+      return nullptr;
+    }
 
     stream->screen_width = width;
     stream->screen_height = height;
@@ -63,12 +118,16 @@ extern "C" {
 
     Gif_CompressInfo compressInfo;
     Gif_InitCompressInfo(&compressInfo);
+
+    /*
+     * compress with loss from LCDFGIF.
+     */
     compressInfo.loss = 20;
 
     std::vector<uint8_t> previousFrame(frameSize, 0);
 
     for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-      uint8_t *rgba = allFrames + (frameIndex * frameSize);
+      uint8_t *rgba = allFrames + (static_cast<size_t>(frameIndex) * frameSize);
 
       int minX = width;
       int minY = height;
@@ -128,19 +187,55 @@ extern "C" {
           0
       );
 
+      if (!frameImage) {
+        Gif_DeleteStream(stream);
+
+        destroyQuantizationResources(attr, globalImage, quantResult);
+
+        return nullptr;
+      }
+
       std::vector<uint8_t> indexed(diffWidth * diffHeight);
 
-      liq_write_remapped_image(
+      const liq_error remapError = liq_write_remapped_image(
           quantResult,
           frameImage,
           indexed.data(),
           indexed.size()
       );
 
+      liq_image_destroy(frameImage);
+
+      if (remapError != LIQ_OK) {
+        Gif_DeleteStream(stream);
+
+        destroyQuantizationResources(attr, globalImage, quantResult);
+
+        return nullptr;
+      }
+
       uint8_t *gifData = Gif_NewArray(uint8_t, indexed.size());
+
+      if (!gifData) {
+        Gif_DeleteStream(stream);
+
+        destroyQuantizationResources(attr, globalImage, quantResult);
+
+        return nullptr;
+      }
+
       memcpy(gifData, indexed.data(), indexed.size());
 
       Gif_Image *image = Gif_NewImage();
+
+      if (!image) {
+        Gif_Free(gifData);
+        Gif_DeleteStream(stream);
+
+        destroyQuantizationResources(attr, globalImage, quantResult);
+
+        return nullptr;
+      }
 
       image->left = minX;
       image->top = minY;
@@ -151,12 +246,26 @@ extern "C" {
       image->transparent = -1;
       image->local = nullptr;
 
-      Gif_SetUncompressedImage(image, gifData, Gif_Free, 0);
-      Gif_FullCompressImage(stream, image, &compressInfo);
+      if (Gif_SetUncompressedImage(image, gifData, Gif_Free, 0) == 0) {
+        Gif_Free(gifData);
+        Gif_DeleteImage(image);
+        Gif_DeleteStream(stream);
+
+        destroyQuantizationResources(attr, globalImage, quantResult);
+
+        return nullptr;
+      }
+
+      if (Gif_FullCompressImage(stream, image, &compressInfo) == 0) {
+        Gif_DeleteImage(image);
+        Gif_DeleteStream(stream);
+
+        destroyQuantizationResources(attr, globalImage, quantResult);
+
+        return nullptr;
+      }
 
       Gif_AddImage(stream, image);
-
-      liq_image_destroy(frameImage);
 
       memcpy(previousFrame.data(), rgba, frameSize);
     }
@@ -166,40 +275,63 @@ extern "C" {
 
     if (!fp) {
       Gif_DeleteStream(stream);
-      liq_result_destroy(quantResult);
-      liq_image_destroy(globalImage);
-      liq_attr_destroy(attr);
+
+      destroyQuantizationResources(attr, globalImage, quantResult);
+
       return nullptr;
     }
 
-    Gif_FullWriteFile(stream, &compressInfo, fp);
+    const int writeResult = Gif_FullWriteFile(stream, &compressInfo, fp);
     fclose(fp);
+
+    if (writeResult == 0) {
+      remove(tempFile);
+      Gif_DeleteStream(stream);
+
+      destroyQuantizationResources(attr, globalImage, quantResult);
+
+      return nullptr;
+    }
 
     fp = fopen(tempFile, "rb");
 
     if (!fp) {
       Gif_DeleteStream(stream);
-      liq_result_destroy(quantResult);
-      liq_image_destroy(globalImage);
-      liq_attr_destroy(attr);
+
+      destroyQuantizationResources(attr, globalImage, quantResult);
+
       return nullptr;
     }
 
     fseek(fp, 0, SEEK_END);
     long fileSize = ftell(fp);
+
+    if (fileSize <= 0) {
+      fclose(fp);
+      remove(tempFile);
+      Gif_DeleteStream(stream);
+
+      destroyQuantizationResources(attr, globalImage, quantResult);
+
+      return nullptr;
+    }
+
     rewind(fp);
 
     outputBuffer.resize(fileSize);
-    fread(outputBuffer.data(), 1, fileSize, fp);
+    const size_t bytesRead = fread(outputBuffer.data(), 1, fileSize, fp);
     fclose(fp);
     remove(tempFile);
 
-    *outSize = (int)outputBuffer.size();
-
     Gif_DeleteStream(stream);
-    liq_result_destroy(quantResult);
-    liq_image_destroy(globalImage);
-    liq_attr_destroy(attr);
+    destroyQuantizationResources(attr, globalImage, quantResult);
+
+    if (bytesRead != outputBuffer.size()) {
+      outputBuffer.clear();
+      return nullptr;
+    }
+
+    *outSize = (int)outputBuffer.size();
 
     return outputBuffer.data();
   }
