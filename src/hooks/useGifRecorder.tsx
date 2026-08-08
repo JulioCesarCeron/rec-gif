@@ -109,7 +109,6 @@ export function useGifRecoreder(wasm: GifWasmModule | null) {
 
     const gifSize = wasm.HEAP32[integerMemoryPointerSize >> 2]
 
-    // const gifData = new Uint8Array(wasm.HEAPU8.buffer, gifPtr, gifSize)
     const gifData = wasm.HEAPU8.slice(gifPtr, gifPtr + gifSize)
 
     const blob = new Blob([gifData], { type: "image/gif" })

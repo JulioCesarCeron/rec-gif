@@ -15,6 +15,15 @@ export interface GifWasmModule extends EmscriptenModule {
   HEAP32: Int32Array
 }
 
-const initWasm: () => Promise<GifWasmModule>
+export interface GifWasmModuleOptions {
+  locateFile?: (
+    path: string,
+    prefix: string
+  ) => string
+}
+
+declare const initWasm: (
+  options?: GifWasmModuleOptions
+) => Promise<GifWasmModule>
 
 export default initWasm
